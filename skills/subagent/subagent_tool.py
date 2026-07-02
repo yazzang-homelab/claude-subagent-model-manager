@@ -247,10 +247,21 @@ def _write_model_frontmatter(path: Path, model: str) -> None:
     path.write_text("\n".join(lines) + trailing_nl, encoding="utf-8")
 
 
-def set_agent(name: str, model: str, scope: str, follow_symlink: bool) -> dict:
+def _resolve_project_agents(project_dir: str | None) -> Path:
+    """project_dir 이 주어지면 <dir>/.claude/agents, 아니면 CWD 기반 PROJECT_AGENTS."""
+    if project_dir:
+        root = Path(project_dir).expanduser()
+        if not root.is_dir():
+            raise SystemExit(f"[err] 프로젝트 폴더가 없습니다: {root}")
+        return root.resolve() / ".claude" / "agents"
+    return PROJECT_AGENTS
+
+
+def set_agent(name: str, model: str, scope: str, follow_symlink: bool,
+              project_dir: str | None = None) -> dict:
     if scope not in ("user", "project"):
         raise SystemExit("[err] scope 는 user|project")
-    src_dir = USER_AGENTS if scope == "user" else PROJECT_AGENTS
+    src_dir = USER_AGENTS if scope == "user" else _resolve_project_agents(project_dir)
     target = src_dir / f"{name}.md"
 
     # project 스코프인데 프로젝트에 없으면 전역본을 그림자 복사
@@ -259,7 +270,7 @@ def set_agent(name: str, model: str, scope: str, follow_symlink: bool) -> dict:
         user_src = USER_AGENTS / f"{name}.md"
         if not user_src.exists():
             raise SystemExit(f"[err] '{name}' 에이전트 파일을 전역/프로젝트 어디에도 못 찾음")
-        PROJECT_AGENTS.mkdir(parents=True, exist_ok=True)
+        target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(os.path.realpath(user_src), target)  # 내용 복사(심링크 아님)
         created_shadow = True
 
@@ -280,8 +291,16 @@ def set_agent(name: str, model: str, scope: str, follow_symlink: bool) -> dict:
             "note": "frontmatter 는 다음 서브에이전트 스폰부터 즉시 반영(재시작 불필요)"}
 
 
-def set_main(model: str, scope: str) -> dict:
-    path = USER_SETTINGS if scope == "user" else PROJECT_SETTINGS
+def set_main(model: str, scope: str, project_dir: str | None = None) -> dict:
+    if scope == "user":
+        path = USER_SETTINGS
+    elif project_dir:
+        root = Path(project_dir).expanduser()
+        if not root.is_dir():
+            raise SystemExit(f"[err] 프로젝트 폴더가 없습니다: {root}")
+        path = root.resolve() / ".claude" / "settings.json"
+    else:
+        path = PROJECT_SETTINGS
     path.parent.mkdir(parents=True, exist_ok=True)
     data = _read_json(path) if path.exists() else {}
     bak = _backup(path)
@@ -327,10 +346,14 @@ def main() -> None:
     p.add_argument("--model", required=True)
     p.add_argument("--scope", choices=["user", "project"], default="user")
     p.add_argument("--follow-symlink", action="store_true")
+    p.add_argument("--project-dir", default=None,
+                   help="project 스코프 대상 폴더(생략 시 현재 작업 폴더)")
 
     p = sub.add_parser("set-main", help="메인 모델 지정")
     p.add_argument("--model", required=True)
     p.add_argument("--scope", choices=["user", "project"], default="user")
+    p.add_argument("--project-dir", default=None,
+                   help="project 스코프 대상 폴더(생략 시 현재 작업 폴더)")
 
     p = sub.add_parser("set-fcc-tier", help="fcc 티어→백엔드 매핑")
     p.add_argument("--tier", required=True, choices=list(FCC_TIER_KEYS))
@@ -342,10 +365,10 @@ def main() -> None:
     elif a.cmd == "table":
         print(table())
     elif a.cmd == "set":
-        print(json.dumps(set_agent(a.agent, a.model, a.scope, a.follow_symlink),
+        print(json.dumps(set_agent(a.agent, a.model, a.scope, a.follow_symlink, a.project_dir),
                          ensure_ascii=False, indent=2))
     elif a.cmd == "set-main":
-        print(json.dumps(set_main(a.model, a.scope), ensure_ascii=False, indent=2))
+        print(json.dumps(set_main(a.model, a.scope, a.project_dir), ensure_ascii=False, indent=2))
     elif a.cmd == "set-fcc-tier":
         print(json.dumps(set_fcc_tier(a.tier, a.model), ensure_ascii=False, indent=2))
 

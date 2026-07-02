@@ -73,6 +73,9 @@ python3 $TOOL set --agent codebase-locator --model haiku --scope user
 # set one agent for THIS project only (creates a shadow copy under ./.claude/agents)
 python3 $TOOL set --agent codebase-analyzer --model sonnet --scope project
 
+# target a specific project dir instead of the current folder (writes <dir>/.claude/agents)
+python3 $TOOL set --agent codebase-analyzer --model sonnet --scope project --project-dir /path/to/project
+
 # set the main model
 python3 $TOOL set-main --model opus --scope user
 
@@ -82,7 +85,10 @@ python3 $TOOL set-fcc-tier --tier haiku --model your-provider/some-cheap-model
 
 ### Web dashboard
 
-A small Flask dashboard reuses the same engine functions (`show` / `set_agent` / `set_main` / `set_fcc_tier`) — identical logic, identical backup-first behavior — behind a browser UI with dropdowns, scope selector, a symlink-guard prompt, and a **KO/EN language toggle**.
+A small Flask dashboard reuses the same engine functions (`show` / `set_agent` / `set_main` / `set_fcc_tier`) — identical logic, identical backup-first behavior — behind a browser UI with dropdowns, scope selector, a symlink-guard prompt, and a **KO/EN language toggle**. Two tabs:
+
+- **Models** — set the main model, per-agent models, and (under `fcc`) the tier mapping. Because a long-running server has no "current folder", **project scope requires an explicit directory path** (the field appears when you pick Project); an empty path is rejected so it never writes to the server's root.
+- **Sessions** — a read-only `/resume`-style list. It scans `~/.claude/projects/*/*.jsonl` for each session's `ai-title` and last prompt, sorted by recent activity, with filter + click-to-copy session IDs. Resume from a terminal with `claude --resume <id>`.
 
 ```bash
 python3 ~/.claude/skills/subagent/dashboard.py                    # localhost-only :8097 (safe default)
