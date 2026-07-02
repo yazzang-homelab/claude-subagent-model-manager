@@ -1,0 +1,15 @@
+[Unit]
+Description=Subagent Model Manager — web dashboard for /subagent skill (:8097)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /root/.claude/skills/subagent/dashboard.py
+Restart=on-failure
+RestartSec=3
+# 자원 제약(SFF 8GB) — 가벼운 Flask 앱이므로 소폭 제한
+MemoryMax=128M
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

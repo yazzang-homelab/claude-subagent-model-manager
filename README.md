@@ -80,6 +80,23 @@ python3 $TOOL set-main --model opus --scope user
 python3 $TOOL set-fcc-tier --tier haiku --model your-provider/some-cheap-model
 ```
 
+### Web dashboard
+
+A small Flask dashboard reuses the same engine functions (`show` / `set_agent` / `set_main` / `set_fcc_tier`) — identical logic, identical backup-first behavior — behind a browser UI with dropdowns, scope selector, a symlink-guard prompt, and a **KO/EN language toggle**.
+
+```bash
+python3 ~/.claude/skills/subagent/dashboard.py     # serves on 0.0.0.0:8097
+```
+
+Run it persistently via systemd — an example unit is included:
+
+```bash
+cp skills/subagent/subagent-dashboard.service.example /etc/systemd/system/subagent-dashboard.service
+systemctl daemon-reload && systemctl enable --now subagent-dashboard.service
+```
+
+> **Secrets stay out.** The dashboard only ever moves model *names*; `show()` never includes API keys, and the page transmits nothing else. Bind it to a trusted LAN / localhost only — the write endpoint has no auth by design (it edits local user-owned files).
+
 ## Scopes
 
 - **Global (`user`)** → `~/.claude/agents/*.md`. Applies to every project.
@@ -104,8 +121,10 @@ python3 $TOOL set-fcc-tier --tier haiku --model your-provider/some-cheap-model
 
 ```
 skills/subagent/
-├── SKILL.md            # /subagent skill definition + step-by-step flow
-└── subagent_tool.py    # engine: show / table / set / set-main / set-fcc-tier
+├── SKILL.md                              # /subagent skill definition + step-by-step flow
+├── subagent_tool.py                      # engine: show / table / set / set-main / set-fcc-tier
+├── dashboard.py                          # optional Flask web UI (KO/EN toggle) reusing the engine
+└── subagent-dashboard.service.example    # systemd unit for persistent hosting
 ```
 
 ## License
