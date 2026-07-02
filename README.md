@@ -88,7 +88,7 @@ python3 $TOOL set-fcc-tier --tier haiku --model your-provider/some-cheap-model
 A small Flask dashboard reuses the same engine functions (`show` / `set_agent` / `set_main` / `set_fcc_tier`) — identical logic, identical backup-first behavior — behind a browser UI with dropdowns, scope selector, a symlink-guard prompt, and a **KO/EN language toggle**. Two tabs:
 
 - **Models** — set the main model, per-agent models, and (under `fcc`) the tier mapping. Because a long-running server has no "current folder", **project scope requires an explicit directory path** (the field appears when you pick Project); an empty path is rejected so it never writes to the server's root.
-- **Sessions** — a read-only `/resume`-style list. It scans `~/.claude/projects/*/*.jsonl` for each session's `ai-title` and last prompt, sorted by recent activity, with filter + click-to-copy session IDs. Resume from a terminal with `claude --resume <id>`.
+- **Sessions** — a `/resume`-style list. It scans `~/.claude/projects/*/*.jsonl` for each session's `ai-title`, last prompt, and real `cwd`, sorted by recent activity, with filter + click-to-copy session IDs (resume from a terminal with `claude --resume <id>`). Each row has a **⚙ Edit models** button that jumps to the Models tab. Note: Claude Code's "project" is the launch `cwd`, so when most sessions run from your home dir (which *is* the global agents folder), subagent config is effectively **global / shared by all sessions** — the tab says so up front.
 
 ```bash
 python3 ~/.claude/skills/subagent/dashboard.py                    # localhost-only :8097 (safe default)

@@ -91,6 +91,7 @@ def _tail_lines(path: Path, max_bytes: int = 1_000_000) -> list[str]:
 def _session_meta(project: str, path: Path) -> dict:
     title = None
     last_prompt = None
+    cwd = None
     for ln in _tail_lines(path):
         if '"ai-title"' in ln:
             try:
@@ -106,10 +107,18 @@ def _session_meta(project: str, path: Path) -> dict:
                     last_prompt = o["lastPrompt"]
             except Exception:
                 pass
+        elif cwd is None and '"cwd"' in ln:
+            try:
+                o = json.loads(ln)
+                if o.get("cwd"):
+                    cwd = o["cwd"]
+            except Exception:
+                pass
     stt = path.stat()
     return {
         "session_id": path.stem,
         "project": project,
+        "cwd": cwd,
         "title": title,
         "last_prompt": last_prompt,
         "mtime": stt.st_mtime,
@@ -277,6 +286,9 @@ const I18N = {
     colWhen:"최근 활동", colLastPrompt:"마지막 프롬프트", noTitle:"(제목 없음)",
     sessionsNote:"읽기 전용 — Claude Code 세션 제목입니다. 재개는 터미널에서 claude --resume <id>. ID 클릭 시 복사.",
     filterPh:"제목·프로젝트 검색…", copied:"세션 ID 복사됨", sessCount:"개 세션",
+    editModels:"모델 설정", colCwd:"프로젝트(cwd)",
+    sessGlobalNote:"⚠ subagent 모델 설정은 전역(모든 세션 공통)입니다 — 대부분 세션의 cwd가 /root(=전역 폴더)라 프로젝트별 구분이 없습니다.",
+    toEditGlobal:"전역 subagent 모델 편집으로 이동 — 모든 세션에 공통 적용됩니다.",
   },
   en:{
     title:"Subagent Model Manager", refresh:"Refresh", loading:"Loading…",
@@ -303,6 +315,9 @@ const I18N = {
     colWhen:"Last active", colLastPrompt:"Last prompt", noTitle:"(untitled)",
     sessionsNote:"Read-only — Claude Code session titles. Resume in terminal with claude --resume <id>. Click an ID to copy.",
     filterPh:"Filter title / project…", copied:"Session ID copied", sessCount:"sessions",
+    editModels:"Edit models", colCwd:"Project (cwd)",
+    sessGlobalNote:"⚠ Subagent model settings are global (shared by all sessions) — most sessions' cwd is /root (= the global folder), so there is no per-project split.",
+    toEditGlobal:"Jump to global subagent model editing — applies to all sessions.",
   }
 };
 let LANG = localStorage.getItem("subagent-lang") || "ko";
@@ -548,9 +563,10 @@ function renderSessions(){
   if(SESSIONS===null){ C.innerHTML = `<p class="kv">${t("loading")}</p>`; return; }
   let h = `<div class="card"><h2>${t("sessionsTitle")} `+
     `<span class="badge">${SESSIONS.length} ${t("sessCount")}</span></h2>`;
+  h += `<div class="warn-box">${t("sessGlobalNote")}</div>`;
   h += `<input class="filter" id="sessFilter" placeholder="${t('filterPh')}" oninput="filterSessions()">`;
   h += `<table><thead><tr><th>${t("colWhen")}</th><th>${t("colTitle")}</th>`+
-    `<th>${t("colProject")}</th><th>${t("colLastPrompt")}</th></tr></thead><tbody id="sessBody">`;
+    `<th>${t("colCwd")}</th><th>${t("colLastPrompt")}</th><th></th></tr></thead><tbody id="sessBody">`;
   h += SESSIONS.map(sessionRow).join("");
   h += `</tbody></table>`;
   h += `<p class="kv" style="font-size:12px;margin:10px 0 0">↳ ${t("sessionsNote")}</p></div>`;
@@ -560,14 +576,21 @@ function sessionRow(s){
   const title = s.title
     ? `<span class="sess-title">${esc(s.title)}</span>`
     : `<span class="sess-title none">${t("noTitle")}</span>`;
-  const hay = ((s.title||"")+" "+(s.project||"")).toLowerCase();
+  const proj = s.cwd || s.project;
+  const hay = ((s.title||"")+" "+(proj||"")).toLowerCase();
   return `<tr data-hay="${esc(hay)}">`+
     `<td class="sess-when">${fmtTime(s.mtime)}</td>`+
     `<td>${title}<div class="sess-id" title="${esc(s.session_id)}" `+
       `onclick="copyId('${esc(s.session_id)}')">${esc(s.session_id.slice(0,8))}</div></td>`+
-    `<td class="sess-proj">${esc(s.project)}</td>`+
+    `<td class="sess-proj" title="${esc(proj||'')}">${esc(proj||'')}</td>`+
     `<td class="sess-prompt" title="${esc(s.last_prompt||'')}">${esc(s.last_prompt||'')}</td>`+
+    `<td><button class="btn" onclick="goToModels()">⚙ ${t("editModels")}</button></td>`+
     `</tr>`;
+}
+function goToModels(){
+  toast("ok", t("editModels"), `<div class="kv" style="font-size:11.5px">${t("toEditGlobal")}</div>`);
+  document.getElementById("tab-models").click();
+  window.scrollTo({top:0, behavior:"smooth"});
 }
 function filterSessions(){
   const q = (document.getElementById("sessFilter").value||"").toLowerCase();
