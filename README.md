@@ -85,8 +85,11 @@ python3 $TOOL set-fcc-tier --tier haiku --model your-provider/some-cheap-model
 A small Flask dashboard reuses the same engine functions (`show` / `set_agent` / `set_main` / `set_fcc_tier`) — identical logic, identical backup-first behavior — behind a browser UI with dropdowns, scope selector, a symlink-guard prompt, and a **KO/EN language toggle**.
 
 ```bash
-python3 ~/.claude/skills/subagent/dashboard.py     # serves on 0.0.0.0:8097
+python3 ~/.claude/skills/subagent/dashboard.py                    # localhost-only :8097 (safe default)
+SUBAGENT_DASH_HOST=0.0.0.0 python3 .../dashboard.py               # expose on the LAN (trusted network only)
 ```
+
+It binds `127.0.0.1` by default; set `SUBAGENT_DASH_HOST` (and optional `SUBAGENT_DASH_PORT`) to change that.
 
 Run it persistently via systemd — an example unit is included:
 
@@ -95,7 +98,7 @@ cp skills/subagent/subagent-dashboard.service.example /etc/systemd/system/subage
 systemctl daemon-reload && systemctl enable --now subagent-dashboard.service
 ```
 
-> **Secrets stay out.** The dashboard only ever moves model *names*; `show()` never includes API keys, and the page transmits nothing else. Bind it to a trusted LAN / localhost only — the write endpoint has no auth by design (it edits local user-owned files).
+> **Secrets stay out.** The dashboard only ever moves model *names*; `show()` never includes API keys, and the page transmits nothing else. The write endpoint has **no auth by design** (it edits local user-owned files), which is why it binds localhost by default — only set `SUBAGENT_DASH_HOST=0.0.0.0` on a network you trust.
 
 ## Scopes
 
