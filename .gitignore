@@ -1,0 +1,6 @@
+# backups produced by the tool
+*.bak-subagent-*
+
+# python
+__pycache__/
+*.pyc
