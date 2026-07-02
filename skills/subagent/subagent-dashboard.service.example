@@ -4,12 +4,16 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /root/.claude/skills/subagent/dashboard.py
+# Adjust the path to wherever this repo's dashboard.py lives (%h = the service user's home).
+ExecStart=/usr/bin/python3 %h/.claude/skills/subagent/dashboard.py
 Restart=on-failure
 RestartSec=3
-# 자원 제약(SFF 8GB) — 가벼운 Flask 앱이므로 소폭 제한
 MemoryMax=128M
 Nice=5
+# Safe default: localhost-only. The write endpoint has no auth, so expose it on
+# the LAN ONLY on a trusted network — uncomment the next line to bind all interfaces:
+# Environment=SUBAGENT_DASH_HOST=0.0.0.0
+# Environment=SUBAGENT_DASH_PORT=8097
 
 [Install]
 WantedBy=multi-user.target
